@@ -76,7 +76,11 @@ class MyHashTable(MutableMapping):
         return self.n_data
 
     def __iter__(self):
-        raise NotImplementedError()
+        """
+        Returns a generator for keys in the container
+        """
+        return (whole_record.key for whole_record in self.data
+                if whole_record)
 
     def __repr__(self):
         return f"MyHashTable of size {self.utilization_status}"

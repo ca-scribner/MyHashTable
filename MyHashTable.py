@@ -12,7 +12,7 @@
 # * For hash collisions, do a simple +1 approach until we find the correct or empty bin
 
 from collections.abc import MutableMapping
-from collections import namedtuple
+from collections import namedtuple, deque
 import logging
 
 
@@ -28,7 +28,8 @@ class MyHashTable(MutableMapping):
     def __init__(self, n_buckets=10, bucket_increment=10, max_utilization_fraction=0.7, autoscale=True):
         self.bucket_increment = bucket_increment
         self.max_utilization_fraction = max_utilization_fraction
-        self.n_data = 0
+        self._n_data = None
+        self.data = None
         self.autoscale = autoscale
 
         self._collision_log_template = namedtuple('collisionLog', 'n_buckets len collisions')
@@ -36,7 +37,8 @@ class MyHashTable(MutableMapping):
         self.n_collisions = 0
 
         self._data_record_template = namedtuple('dataRecord', 'key value')
-        self.data = [None] * n_buckets
+
+        self._initialize_data(n_buckets)
 
     def __setitem__(self, key, value):
         logger.debug(f"set {key}: {value} (start)")
@@ -54,7 +56,7 @@ class MyHashTable(MutableMapping):
         # leave the n_data incremented incorrectly or not?
         if data_added:
             # Data is added to collection
-            self.n_data += 1
+            self._increment_n_data()
 
         logger.debug(f"set {key}: {value} -> bucket {i_bucket} ({self.utilization_status})")
 
@@ -70,7 +72,7 @@ class MyHashTable(MutableMapping):
 
     def __delitem__(self, key):
         raise NotImplementedError()
-        self.n_data -= 1
+        self._decrement_n_data
 
     def __len__(self):
         return self.n_data
@@ -84,6 +86,19 @@ class MyHashTable(MutableMapping):
 
     def __repr__(self):
         return f"MyHashTable of size {self.utilization_status}"
+
+    @property
+    def n_data(self):
+        return self._n_data
+
+    def _increment_n_data(self):
+        self._n_data += 1
+
+    def _decrement_n_data(self):
+        self._n_data -= 1
+
+    def _reset_n_data(self):
+        self._n_data = 0
 
     @property
     def utilization_status(self):
@@ -138,6 +153,10 @@ class MyHashTable(MutableMapping):
         self._log_collisions(n_collisions)
         return i_bucket
 
+    def _initialize_data(self, n_buckets):
+        self._reset_n_data()
+        self.data = [None] * n_buckets
+
     def _log_collisions(self, n):
         """
         Log the number of collisions for a single key_to_bucket
@@ -167,7 +186,19 @@ class MyHashTable(MutableMapping):
         Args:
             n_buckets (int): Integer number of buckets
         """
-        raise NotImplementedError()
+        logger.debug(f"resize from {self.n_buckets} to {n_buckets}")
+        if n_buckets < len(self):
+            raise ValueError(f"Cannot resize - requested size {n_buckets} smaller than stored data {len(self)}")
+
+        # To be a little faster, we could reuse the actual records and not the kv pairs...
+        record_kvs = deque((record.key, record.value) for record in self.data if record is not None)
+
+        # Reset data and size counter
+        self._initialize_data(n_buckets)
+        # Recommit data
+        for k, v in record_kvs:
+            self[k] = v
+        logger.debug(f"resize complete - {self.utilization_status}")
 
 
 # Helpers

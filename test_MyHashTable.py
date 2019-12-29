@@ -229,23 +229,30 @@ def test_MyHashTable_keys(inputs):
             'updated_size': 30,
             'raises': does_not_raise(),
         },
+        {
+            'hash_table_settings': {'n_buckets': 10,
+                                    'autoscale': False,
+                                    },
+            'n_data': 5,
+            'updated_size': 2,
+            'raises': pytest.raises(ValueError),
+        },
     ]
 )
 def test_MyHashTable_resizedata(inputs):
-    ht = MyHashTable(**inputs['hash_table_settings'])
-    data = deque()
+    with inputs['raises']:
+        ht = MyHashTable(**inputs['hash_table_settings'])
+        data = deque()
 
-    for i in range(inputs['n_data']):
-        ht[i] = [i]
-        data.append((i, i))
+        for i in range(inputs['n_data']):
+            ht[i] = i
+            data.append((i, i))
 
-    old_size = ht.n_buckets
+        ht._resize_data(inputs['updated_size'])
 
-    ht._resize_data(inputs['updated_size'])
+        assert inputs['updated_size'] == ht.n_buckets
 
-    assert old_size == ht.n_buckets
-
-    assert_ht_has(ht, data)
+        assert_ht_has(ht, data)
 
 
 # Helpers

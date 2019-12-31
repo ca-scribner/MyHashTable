@@ -3,6 +3,7 @@ from MyHashTable import MyHashTable
 from collections import deque
 from contextlib import contextmanager
 
+
 # Note: For deterministic testing need to set environment variable PYTHONHASHSEED=1
 
 
@@ -41,50 +42,6 @@ def test_MyHashTable_setget(inp):
     assert updated_value == ht[key]
 
 
-AUTOSCALE_KEYS_TESTS_INPUTS = [
-    # Does not scale and doesn't need to scale
-    {
-        'hash_table_settings': {'bucket_increment': 2,
-                                'n_buckets': 4,
-                                'max_utilization_fraction': 0.5,
-                                'autoscale': False,
-                                },
-        'n': 2,
-        'raises': does_not_raise(),
-    },
-    # Does not scale and doesn't need to scale
-    {
-        'hash_table_settings': {'bucket_increment': 2,
-                                'n_buckets': 4,
-                                'max_utilization_fraction': 0.5,
-                                'autoscale': False,
-                                },
-        'n': 4,
-        'raises': does_not_raise(),
-    },
-
-    # Does not scale and maxes size because of it
-    {
-        'hash_table_settings': {'bucket_increment': 2,
-                                'n_buckets': 4,
-                                'max_utilization_fraction': 0.5,
-                                },
-        'n': 10,
-        'raises': pytest.raises(ValueError),
-    },
-
-    # # Does scale and is ok because of it
-    # {
-    #     'hash_table_settings': {'bucket_increment': 2,
-    #                             'n_buckets': 4,
-    #                             'max_utilization_fraction': 0.5,
-    #                             },
-    #     'n': 20,
-    #     'raises': does_not_raise(),
-    # },
-]
-
-
 @pytest.mark.parametrize(
     "inputs",
     [
@@ -93,7 +50,7 @@ AUTOSCALE_KEYS_TESTS_INPUTS = [
             'hash_table_settings': {'bucket_increment': 2,
                                     'n_buckets': 4,
                                     'max_utilization_fraction': 0.5,
-                                    'autoscale': False,
+                                    'auto_resize': False,
                                     },
             'n': 2,
             'raises': does_not_raise(),
@@ -103,7 +60,7 @@ AUTOSCALE_KEYS_TESTS_INPUTS = [
             'hash_table_settings': {'bucket_increment': 2,
                                     'n_buckets': 4,
                                     'max_utilization_fraction': 0.5,
-                                    'autoscale': False,
+                                    'auto_resize': False,
                                     },
             'n': 4,
             'raises': does_not_raise(),
@@ -114,6 +71,7 @@ AUTOSCALE_KEYS_TESTS_INPUTS = [
             'hash_table_settings': {'bucket_increment': 2,
                                     'n_buckets': 4,
                                     'max_utilization_fraction': 0.5,
+                                    'auto_resize': False,
                                     },
             'n': 10,
             'raises': pytest.raises(ValueError),
@@ -130,7 +88,7 @@ AUTOSCALE_KEYS_TESTS_INPUTS = [
         },
     ]
 )
-def test_MyHashTable_autoscale(inputs):
+def test_MyHashTable_auto_resize(inputs):
     with inputs['raises']:
         ht = MyHashTable(**inputs['hash_table_settings'])
         n = inputs['n']
@@ -160,7 +118,7 @@ def test_MyHashTable_autoscale(inputs):
             'hash_table_settings': {'bucket_increment': 2,
                                     'n_buckets': 4,
                                     'max_utilization_fraction': 0.5,
-                                    'autoscale': False,
+                                    'auto_resize': False,
                                     },
             'n': 2,
             'raises': does_not_raise(),
@@ -170,7 +128,7 @@ def test_MyHashTable_autoscale(inputs):
             'hash_table_settings': {'bucket_increment': 2,
                                     'n_buckets': 4,
                                     'max_utilization_fraction': 0.5,
-                                    'autoscale': False,
+                                    'auto_resize': False,
                                     },
             'n': 4,
             'raises': does_not_raise(),
@@ -181,6 +139,7 @@ def test_MyHashTable_autoscale(inputs):
             'hash_table_settings': {'bucket_increment': 2,
                                     'n_buckets': 4,
                                     'max_utilization_fraction': 0.5,
+                                    'auto_resize': False,
                                     },
             'n': 10,
             'raises': pytest.raises(ValueError),
@@ -223,7 +182,7 @@ def test_MyHashTable_keys(inputs):
     [
         {
             'hash_table_settings': {'n_buckets': 10,
-                                    'autoscale': False,
+                                    'auto_resize': False,
                                     },
             'n_data': 5,
             'updated_size': 30,
@@ -231,7 +190,7 @@ def test_MyHashTable_keys(inputs):
         },
         {
             'hash_table_settings': {'n_buckets': 10,
-                                    'autoscale': False,
+                                    'auto_resize': False,
                                     },
             'n_data': 5,
             'updated_size': 2,
@@ -255,6 +214,38 @@ def test_MyHashTable_resizedata(inputs):
         assert_ht_has(ht, data)
 
 
+def test_MyHashTable_delitem():
+    ht = MyHashTable()
+    k = 'key'
+    v = 1
+    ht[k] = v
+
+    assert v == ht[k]
+    assert k in ht
+    assert 1 == len(ht)
+
+    del ht[k]
+
+    assert 0 == len(ht)
+    assert k not in ht
+    with pytest.raises(KeyError):
+        ht[k]
+
+    ht = MyHashTable()
+    n = 100
+    keys = set()
+    for i in range(n):
+        keys.add(i)
+        ht[i] = True
+
+    assert n == len(ht)
+
+    for k in keys:
+        del ht[k]
+
+    assert 0 == len(ht)
+
+
 # Helpers
 def assert_ht_has(ht, iterable):
     """
@@ -262,9 +253,6 @@ def assert_ht_has(ht, iterable):
     """
     for k, v in iterable:
         assert v == ht[k]
-
-
-
-
+        assert k in ht
 
 # Todo: Test in, keys, iter

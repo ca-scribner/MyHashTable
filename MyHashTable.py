@@ -15,7 +15,6 @@ from collections.abc import MutableMapping
 from collections import namedtuple, deque
 import logging
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 consoleHandler = logging.StreamHandler()
@@ -25,12 +24,12 @@ consoleHandler.setFormatter(formatter)
 
 class MyHashTable(MutableMapping):
 
-    def __init__(self, n_buckets=10, bucket_increment=10, max_utilization_fraction=0.7, autoscale=True):
+    def __init__(self, n_buckets=10, bucket_increment=10, max_utilization_fraction=0.7, auto_resize=True):
         self.bucket_increment = bucket_increment
         self.max_utilization_fraction = max_utilization_fraction
         self._n_data = None
         self.data = None
-        self.autoscale = autoscale
+        self.auto_resize = auto_resize
 
         self._collision_log_template = namedtuple('collisionLog', 'n_buckets len collisions')
         self.collision_log = []
@@ -42,8 +41,6 @@ class MyHashTable(MutableMapping):
 
     def __setitem__(self, key, value):
         logger.debug(f"set {key}: {value} (start)")
-        print("WARNING: setitem does not upsize self.data")
-        # TODO: Resize first based on len+1, self.autoscale
         try:
             i_bucket = self._key_to_bucket(key)
         except KeyError:
@@ -57,8 +54,10 @@ class MyHashTable(MutableMapping):
         if data_added:
             # Data is added to collection
             self._increment_n_data()
-
         logger.debug(f"set {key}: {value} -> bucket {i_bucket} ({self.utilization_status})")
+
+        if self.auto_resize and (self.utilization > self.max_utilization_fraction):
+            self._resize_data(self.n_buckets + self.bucket_increment)
 
     def __getitem__(self, key):
         logger.debug(f"get {key}")
@@ -71,8 +70,9 @@ class MyHashTable(MutableMapping):
         return value
 
     def __delitem__(self, key):
-        raise NotImplementedError()
-        self._decrement_n_data
+        i_bucket = self._key_to_bucket(key)
+        self.data[i_bucket] = None
+        self._decrement_n_data()
 
     def __len__(self):
         return self.n_data
@@ -102,7 +102,7 @@ class MyHashTable(MutableMapping):
 
     @property
     def utilization_status(self):
-        return f"{len(self)} / {self.n_buckets} ({self.utilization*100:.1f}%)"
+        return f"{len(self)} / {self.n_buckets} ({self.utilization * 100:.1f}%)"
 
     @property
     def n_buckets(self):
